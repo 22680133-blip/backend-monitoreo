@@ -8,3 +8,11 @@ const pool = new Pool({
 });
 
 module.exports = pool;
+
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Error de conexión:', err);
+  } else {
+    console.log('Conectado a PostgreSQL:', res.rows);
+  }
+});
