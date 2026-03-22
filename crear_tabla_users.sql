@@ -8,12 +8,19 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255),
   google_id VARCHAR(255) UNIQUE,
   facebook_id VARCHAR(255) UNIQUE,
+  picture VARCHAR,
+  telefono VARCHAR DEFAULT NULL,
+  ubicacion VARCHAR DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Crear índice en email para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- Agregar columnas de perfil si la tabla ya existe
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telefono VARCHAR DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ubicacion VARCHAR DEFAULT NULL;
 
 -- Ver la tabla
 SELECT * FROM users;
