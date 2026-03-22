@@ -1,1 +1,12 @@
-const express = require('express'); const cors = require('cors'); const authRoutes = require('./routes/auth.routes'); const app = express(); app.use(cors()); app.use(express.json()); app.use('/api/auth', authRoutes); app.get('/', (req, res) => { res.json({ mensaje: "API Monitoreo funcionando 🔥" }); }); module.exports = app;
+const express = require('express');
+const router = express.Router();
+const auth = require('../middleware/auth');
+const deviceController = require('../controllers/device.controller');
+
+router.post('/', auth, deviceController.create);
+router.get('/', auth, deviceController.getAll);
+router.get('/:id', auth, deviceController.getOne);
+router.put('/:id', auth, deviceController.update);
+router.delete('/:id', auth, deviceController.remove);
+
+module.exports = router;
