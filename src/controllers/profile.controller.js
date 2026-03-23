@@ -42,25 +42,81 @@ exports.updateProfile = async (req, res) => {
       return res.status(404).json({ mensaje: 'Usuario no encontrado' });
     }
 
-    const user = current.rows[0];
+    // Build dynamic SET clause — only update columns that were sent
+    const setClauses = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (nombre !== undefined) {
+      setClauses.push(`nombre = $${paramIndex++}`);
+      values.push(String(nombre).trim());
+    }
+    if (telefono !== undefined) {
+      setClauses.push(`telefono = $${paramIndex++}`);
+      values.push(String(telefono).trim());
+    }
+    if (ubicacion !== undefined) {
+      setClauses.push(`ubicacion = $${paramIndex++}`);
+      values.push(String(ubicacion).trim());
+    }
+    if (picture !== undefined) {
+      setClauses.push(`picture = $${paramIndex++}`);
+      values.push(picture || null);
+    }
+
+    if (setClauses.length === 0) {
+      const user = current.rows[0];
+      return res.json({ usuario: formatUser(user) });
+    }
+
+    values.push(userId);
 
     const result = await pool.query(
-      `UPDATE users
-       SET nombre = $1, telefono = $2, ubicacion = $3, picture = $4
-       WHERE id = $5
-       RETURNING *`,
-      [
-        nombre !== undefined ? String(nombre).trim() : user.nombre,
-        telefono !== undefined ? String(telefono).trim() : user.telefono,
-        ubicacion !== undefined ? String(ubicacion).trim() : user.ubicacion,
-        picture !== undefined ? picture : user.picture,
-        userId,
-      ]
+      `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      values,
     );
 
     res.json({ usuario: formatUser(result.rows[0]) });
   } catch (error) {
     console.error('Error al actualizar perfil:', error);
+
+    // If a column doesn't exist (e.g. telefono/ubicacion not yet added),
+    // retry with only the core columns (nombre, picture).
+    if (error.code === '42703') {
+      try {
+        const { nombre, picture } = req.body;
+        const userId = getUserId(req);
+        const cur = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if (cur.rows.length === 0) {
+          return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        }
+        const user = cur.rows[0];
+        const fallbackSet = [];
+        const fallbackVals = [];
+        let idx = 1;
+        if (nombre !== undefined) {
+          fallbackSet.push(`nombre = $${idx++}`);
+          fallbackVals.push(String(nombre).trim());
+        }
+        if (picture !== undefined) {
+          fallbackSet.push(`picture = $${idx++}`);
+          fallbackVals.push(picture || null);
+        }
+        if (fallbackSet.length === 0) {
+          return res.json({ usuario: formatUser(user) });
+        }
+        fallbackVals.push(userId);
+        const result = await pool.query(
+          `UPDATE users SET ${fallbackSet.join(', ')} WHERE id = $${idx} RETURNING *`,
+          fallbackVals,
+        );
+        return res.json({ usuario: formatUser(result.rows[0]) });
+      } catch (fallbackError) {
+        console.error('Error en fallback de perfil:', fallbackError);
+        return res.status(500).json({ mensaje: 'Error al actualizar perfil' });
+      }
+    }
+
     res.status(500).json({ mensaje: 'Error al actualizar perfil' });
   }
 };
