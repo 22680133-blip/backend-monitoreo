@@ -60,15 +60,22 @@ async function initDB() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_readings_created_at ON readings(created_at DESC);`);
 
     // Agregar columnas que puedan faltar en tablas ya existentes
-    const safeAddColumn = async (table, column, type) => {
-      try {
-        await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type};`);
-      } catch (_) { /* la columna ya existe */ }
-    };
+    const addColumnStatements = [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS telefono VARCHAR DEFAULT NULL`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS ubicacion VARCHAR DEFAULT NULL`,
+      `ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_id VARCHAR(255)`,
+    ];
 
-    await safeAddColumn('users', 'telefono', 'VARCHAR DEFAULT NULL');
-    await safeAddColumn('users', 'ubicacion', 'VARCHAR DEFAULT NULL');
-    await safeAddColumn('devices', 'device_id', 'VARCHAR(255)');
+    for (const stmt of addColumnStatements) {
+      try {
+        await pool.query(stmt);
+      } catch (err) {
+        // Ignorar solo errores de "columna ya existe" (código 42701)
+        if (err.code !== '42701') {
+          console.warn('⚠️ Error al agregar columna:', err.message);
+        }
+      }
+    }
 
     console.log('✅ Base de datos inicializada correctamente');
   } catch (error) {

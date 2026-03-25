@@ -204,7 +204,8 @@ exports.deleteDevice = async (req, res) => {
 exports.getDeviceReadings = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+    const parsed = parseInt(req.query.limit, 10);
+    const limit = Math.min(Math.max(parsed > 0 ? parsed : 50, 1), 500);
 
     // Verificar que el dispositivo pertenece al usuario
     const check = await pool.query(
