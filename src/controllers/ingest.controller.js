@@ -4,7 +4,11 @@
  * El ESP32 envía un POST con Content-Type: application/json y un cuerpo como:
  *   { "device_code": "FRIDGE-XXXX", "temperatura": 5.2, "humedad": 60 }
  *
- * No requiere JWT; se autentica por el device_code único del dispositivo.
+ * También acepta "device_id" como alias de "device_code" para compatibilidad
+ * con sketches ESP32 que usen ese nombre de campo. Si se envía "device_id",
+ * primero se busca en la columna device_code y luego en device_id.
+ *
+ * No requiere JWT; se autentica por el código único del dispositivo.
  */
 const pool = require('../config/db');
 
@@ -13,11 +17,14 @@ const pool = require('../config/db');
 // ============================================================
 exports.createReading = async (req, res) => {
   try {
-    const { device_code, temperatura, humedad } = req.body;
+    const { device_code, device_id, temperatura, humedad } = req.body;
+
+    // Aceptar device_code o device_id como identificador
+    const code = device_code || device_id;
 
     // --- Validación básica ------------------------------------------------
-    if (!device_code) {
-      return res.status(400).json({ mensaje: 'device_code es requerido' });
+    if (!code) {
+      return res.status(400).json({ mensaje: 'device_code o device_id es requerido' });
     }
 
     if (temperatura === undefined || temperatura === null) {
@@ -37,10 +44,10 @@ exports.createReading = async (req, res) => {
       }
     }
 
-    // --- Buscar dispositivo por device_code --------------------------------
+    // --- Buscar dispositivo por device_code o device_id --------------------
     const deviceResult = await pool.query(
-      'SELECT id FROM devices WHERE device_code = $1 LIMIT 1',
-      [device_code]
+      'SELECT id FROM devices WHERE device_code = $1 OR device_id = $1 LIMIT 1',
+      [code]
     );
 
     if (deviceResult.rows.length === 0) {
@@ -82,7 +89,7 @@ exports.getReadings = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
 
     const deviceResult = await pool.query(
-      'SELECT id FROM devices WHERE device_code = $1 LIMIT 1',
+      'SELECT id FROM devices WHERE device_code = $1 OR device_id = $1 LIMIT 1',
       [device_code]
     );
 
