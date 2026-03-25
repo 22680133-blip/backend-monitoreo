@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth.routes');
 const deviceRoutes = require('./routes/devices');
@@ -10,6 +11,15 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Rate limiter general para endpoints públicos ligeros
+const statusLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: 'Demasiadas peticiones, intenta más tarde' },
+});
 
 // Rutas de autenticación (sin cambios)
 app.use('/api/auth', authRoutes);
@@ -28,7 +38,7 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint de estado — útil para verificar conectividad desde el ESP32 o la app
-app.get('/api/status', async (req, res) => {
+app.get('/api/status', statusLimiter, async (req, res) => {
   try {
     const pool = require('./config/db');
     const dbResult = await pool.query('SELECT NOW() AS now');
