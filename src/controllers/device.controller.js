@@ -23,6 +23,8 @@ function formatDevice(row) {
   return {
     id: row.id,
     deviceId: row.device_code,
+    deviceCode: row.device_code,
+    device_id: row.device_id || null,
     nombre: row.nombre,
     ubicacion: row.ubicacion,
     limiteMin: parseFloat(row.limite_min),
@@ -105,12 +107,12 @@ exports.getDevice = async (req, res) => {
 exports.createDevice = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { nombre, ubicacion, limiteMin, limiteMax } = req.body;
+    const { nombre, ubicacion, limiteMin, limiteMax, device_id } = req.body;
     const deviceCode = await generateDeviceCode();
 
     const result = await pool.query(
-      `INSERT INTO devices (user_id, nombre, ubicacion, limite_min, limite_max, device_code, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO devices (user_id, nombre, ubicacion, limite_min, limite_max, device_code, device_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         userId,
@@ -119,6 +121,7 @@ exports.createDevice = async (req, res) => {
         limiteMin ?? 2,
         limiteMax ?? 8,
         deviceCode,
+        device_id ? String(device_id).trim() : null,
         'desconectado',
       ]
     );
@@ -136,7 +139,7 @@ exports.createDevice = async (req, res) => {
 exports.updateDevice = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { nombre, ubicacion, limiteMin, limiteMax } = req.body;
+    const { nombre, ubicacion, limiteMin, limiteMax, device_id } = req.body;
 
     // Verificar que el dispositivo pertenece al usuario
     const check = await pool.query(
@@ -152,14 +155,15 @@ exports.updateDevice = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE devices
-       SET nombre = $1, ubicacion = $2, limite_min = $3, limite_max = $4
-       WHERE id = $5 AND user_id = $6
+       SET nombre = $1, ubicacion = $2, limite_min = $3, limite_max = $4, device_id = $5
+       WHERE id = $6 AND user_id = $7
        RETURNING *`,
       [
         (nombre !== undefined && nombre !== null) ? String(nombre).trim() : current.nombre,
         (ubicacion !== undefined && ubicacion !== null) ? String(ubicacion).trim() : current.ubicacion,
         limiteMin !== undefined ? limiteMin : current.limite_min,
         limiteMax !== undefined ? limiteMax : current.limite_max,
+        device_id !== undefined ? (device_id ? String(device_id).trim() : null) : current.device_id,
         req.params.id,
         userId,
       ]
@@ -191,6 +195,42 @@ exports.deleteDevice = async (req, res) => {
   } catch (error) {
     console.error('Error al eliminar dispositivo:', error);
     res.status(500).json({ mensaje: 'Error al eliminar dispositivo' });
+  }
+};
+
+// ============================================================
+// GET /api/devices/:id/readings — Lecturas de un dispositivo (para el dashboard)
+// ============================================================
+exports.getDeviceReadings = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
+
+    // Verificar que el dispositivo pertenece al usuario
+    const check = await pool.query(
+      'SELECT id FROM devices WHERE id = $1 AND user_id = $2',
+      [req.params.id, userId]
+    );
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ mensaje: 'Dispositivo no encontrado' });
+    }
+
+    const deviceId = check.rows[0].id;
+
+    const readings = await pool.query(
+      `SELECT id, temperatura, humedad, created_at
+       FROM readings
+       WHERE device_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [deviceId, limit]
+    );
+
+    res.json({ readings: readings.rows });
+  } catch (error) {
+    console.error('Error al obtener lecturas del dispositivo:', error);
+    res.status(500).json({ mensaje: 'Error al obtener lecturas' });
   }
 };
 

@@ -27,4 +27,25 @@ app.get('/', (req, res) => {
   res.json({ mensaje: "API Monitoreo funcionando 🔥" });
 });
 
+// Endpoint de estado — útil para verificar conectividad desde el ESP32 o la app
+app.get('/api/status', async (req, res) => {
+  try {
+    const pool = require('./config/db');
+    const dbResult = await pool.query('SELECT NOW() AS now');
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      db: 'connected',
+      dbTime: dbResult.rows[0].now,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      db: 'disconnected',
+      error: error.message,
+    });
+  }
+});
+
 module.exports = app;

@@ -8,6 +8,7 @@ router.use(auth);
 
 router.get('/', deviceController.getDevices);
 router.get('/:id', deviceController.getDevice);
+router.get('/:id/readings', deviceController.getDeviceReadings);
 router.post('/', deviceController.createDevice);
 router.put('/:id', deviceController.updateDevice);
 router.delete('/:id', deviceController.deleteDevice);
