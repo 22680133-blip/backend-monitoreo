@@ -1,6 +1,6 @@
 /**
  * Inicialización de la base de datos.
- * Crea las tablas necesarias si no existen (users → devices → readings).
+ * Crea las tablas necesarias si no existen (users → devices → temperatures → alert).
  * Se ejecuta una sola vez al arrancar el servidor.
  */
 const pool = require('./db');
@@ -40,34 +40,42 @@ async function initDB() {
       );
     `);
 
-    // 3. Tabla readings (depende de devices)
+    // 3. Tabla temperatures (depende de devices)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS readings (
+      CREATE TABLE IF NOT EXISTS temperatures (
         id            SERIAL PRIMARY KEY,
         device_id     INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
         temperatura   FLOAT NOT NULL,
         humedad       FLOAT,
-        compresor     BOOLEAN DEFAULT true,
-        energia       VARCHAR(50) DEFAULT 'Normal',
-        created_at    TIMESTAMP DEFAULT NOW()
+        fecha         TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // 4. Tabla alert (depende de devices)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS alert (
+        id            SERIAL PRIMARY KEY,
+        device_id     INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+        tipo          VARCHAR(50),
+        mensaje       TEXT,
+        fecha         TIMESTAMP DEFAULT NOW(),
+        leida         BOOLEAN DEFAULT false
       );
     `);
 
     // Índices útiles (IF NOT EXISTS evita errores si ya existen)
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email        ON users(email);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_user_id    ON devices(user_id);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_code ON devices(device_code);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_id  ON devices(device_id);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_readings_device_id ON readings(device_id);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_readings_created_at ON readings(created_at DESC);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email            ON users(email);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_user_id        ON devices(user_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_code    ON devices(device_code);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_id      ON devices(device_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_device_id ON temperatures(device_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_fecha     ON temperatures(fecha DESC);`);
 
     // Agregar columnas que puedan faltar en tablas ya existentes
     const addColumnStatements = [
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS telefono VARCHAR DEFAULT NULL`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS ubicacion VARCHAR DEFAULT NULL`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_id VARCHAR(255)`,
-      `ALTER TABLE readings ADD COLUMN IF NOT EXISTS compresor BOOLEAN DEFAULT true`,
-      `ALTER TABLE readings ADD COLUMN IF NOT EXISTS energia VARCHAR(50) DEFAULT 'Normal'`,
     ];
 
     for (const stmt of addColumnStatements) {

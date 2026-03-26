@@ -3,6 +3,9 @@
  *
  * Devuelve las últimas lecturas de todos los dispositivos o filtradas
  * por device_code. No requiere JWT.
+ *
+ * Tabla origen: temperatures (id, device_id, temperatura, humedad, fecha)
+ * Campo fecha en DB → se devuelve como "timestamp" en la API.
  */
 const pool = require('../config/db');
 
@@ -18,33 +21,31 @@ exports.getReadings = async (req, res) => {
     let params;
 
     if (device_code) {
-      // Filtrar por device_code exacto (soporta acentos como "FRIGORÍFICO-9A50")
       console.log(`📖 GET /api/readings — Filtrando por device_code: "${device_code}"`);
 
       query = `
         SELECT d.device_code,
-               r.temperatura,
-               r.humedad,
-               r.created_at AS timestamp
-        FROM readings r
-        JOIN devices d ON d.id = r.device_id
+               t.temperatura,
+               t.humedad,
+               t.fecha AS timestamp
+        FROM temperatures t
+        JOIN devices d ON d.id = t.device_id
         WHERE d.device_code = $1 OR d.device_id = $1
-        ORDER BY r.created_at DESC
+        ORDER BY t.fecha DESC
         LIMIT $2
       `;
       params = [device_code, limit];
     } else {
-      // Sin filtro — devolver lecturas de todos los dispositivos
       console.log('📖 GET /api/readings — Sin filtro, devolviendo últimas lecturas');
 
       query = `
         SELECT d.device_code,
-               r.temperatura,
-               r.humedad,
-               r.created_at AS timestamp
-        FROM readings r
-        JOIN devices d ON d.id = r.device_id
-        ORDER BY r.created_at DESC
+               t.temperatura,
+               t.humedad,
+               t.fecha AS timestamp
+        FROM temperatures t
+        JOIN devices d ON d.id = t.device_id
+        ORDER BY t.fecha DESC
         LIMIT $1
       `;
       params = [limit];
