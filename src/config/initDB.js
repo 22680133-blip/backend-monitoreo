@@ -1,6 +1,6 @@
 /**
  * Inicialización de la base de datos.
- * Crea las tablas necesarias si no existen (users → devices → temperatures → alert).
+ * Crea las tablas necesarias si no existen (users → devices → temperatures → alerts).
  * Se ejecuta una sola vez al arrancar el servidor.
  */
 const pool = require('./db');
@@ -51,9 +51,9 @@ async function initDB() {
       );
     `);
 
-    // 4. Tabla alert (depende de devices)
+    // 4. Tabla alerts (depende de devices)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS alert (
+      CREATE TABLE IF NOT EXISTS alerts (
         id            SERIAL PRIMARY KEY,
         device_id     INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
         tipo          VARCHAR(50),
@@ -70,7 +70,7 @@ async function initDB() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_id      ON devices(device_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_device_id ON temperatures(device_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_fecha     ON temperatures(fecha DESC);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_alert_device_tipo_fecha ON alert(device_id, tipo, fecha DESC);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_alerts_device_tipo_fecha ON alerts(device_id, tipo, fecha DESC);`);
 
     // Agregar columnas que puedan faltar en tablas ya existentes
     const addColumnStatements = [
