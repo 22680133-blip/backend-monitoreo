@@ -2,11 +2,11 @@
  * Controlador de ingesta HTTP — raw pg
  *
  * Endpoint público para que el ESP32 envíe lecturas vía HTTP.
- * El ESP32 se identifica con su device_code (ej: "FRIDGE-A1B2"),
+ * El ESP32 se identifica con su device_code (ej: "FRIGORIFICO-9A50"),
  * ya sea como parámetro en la URL o en el body del request.
- * También acepta "device_id" como alias para compatibilidad con
- * sketches ESP32 que usen ese nombre de campo.
  * No requiere JWT — la autenticación se basa en el código único.
+ *
+ * Tabla destino: temperatures (id, device_id, temperatura, humedad, fecha)
  */
 const pool = require('../config/db');
 
@@ -16,8 +16,10 @@ const pool = require('../config/db');
 // ============================================================
 exports.ingest = async (req, res) => {
   try {
+    console.log('Datos recibidos:', { device_code: req.body.device_code, temperatura: req.body.temperatura, humedad: req.body.humedad });
+
     const rawCode = req.params.deviceCode || req.body.device_code || req.body.device_id;
-    const { temperatura, humedad, compresor, energia } = req.body;
+    const { temperatura, humedad } = req.body;
 
     if (!rawCode || typeof rawCode !== 'string' || !rawCode.trim()) {
       return res.status(400).json({ mensaje: 'device_code es requerido (en URL o body)' });
@@ -54,28 +56,21 @@ exports.ingest = async (req, res) => {
 
     const deviceId = deviceResult.rows[0].id;
 
-    // Guardar la lectura
+    // Guardar la lectura en tabla temperatures
     const result = await pool.query(
-      `INSERT INTO readings (device_id, temperatura, humedad, compresor, energia)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO temperatures (device_id, temperatura, humedad, fecha)
+       VALUES ($1, $2, $3, NOW())
        RETURNING *`,
-      [
-        deviceId,
-        temp,
-        hum,
-        compresor ?? true,
-        energia || 'Normal',
-      ]
+      [deviceId, temp, hum]
     );
 
-    // Actualizar estado del dispositivo
-    const newStatus = energia === 'Falla' ? 'alerta' : 'activo';
+    // Actualizar estado del dispositivo a activo
     await pool.query(
       'UPDATE devices SET status = $1 WHERE id = $2',
-      [newStatus, deviceId]
+      ['activo', deviceId]
     );
 
-    console.log(`📡 [HTTP] [${deviceCode}] Temperatura: ${temp}°C | Energía: ${energia || 'Normal'}`);
+    console.log(`Datos guardados correctamente — [${deviceCode}] Temperatura: ${temp}°C`);
     res.status(201).json({ mensaje: 'Lectura registrada', reading: result.rows[0] });
   } catch (error) {
     console.error('Error en ingesta HTTP:', error);

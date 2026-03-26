@@ -220,10 +220,10 @@ exports.getDeviceReadings = async (req, res) => {
     const deviceId = check.rows[0].id;
 
     const readings = await pool.query(
-      `SELECT id, temperatura, humedad, created_at
-       FROM readings
+      `SELECT id, temperatura, humedad, fecha
+       FROM temperatures
        WHERE device_id = $1
-       ORDER BY created_at DESC
+       ORDER BY fecha DESC
        LIMIT $2`,
       [deviceId, limit]
     );
