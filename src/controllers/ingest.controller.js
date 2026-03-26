@@ -16,7 +16,7 @@ const pool = require('../config/db');
 // ============================================================
 exports.ingest = async (req, res) => {
   try {
-    console.log('Datos recibidos:', req.body);
+    console.log('Datos recibidos:', { device_code: req.body.device_code, temperatura: req.body.temperatura, humedad: req.body.humedad });
 
     const rawCode = req.params.deviceCode || req.body.device_code || req.body.device_id;
     const { temperatura, humedad } = req.body;

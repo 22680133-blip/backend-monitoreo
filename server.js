@@ -14,7 +14,7 @@ initDB()
   .catch((error) => {
     console.error('❌ Error al inicializar DB, iniciando servidor de todas formas:', error.message);
     app.listen(PORT, () => {
-      console.log(`Servidor iniciado correctamente en puerto ${PORT} (sin DB init)`);
+      console.log(`Servidor iniciado en puerto ${PORT} (DB init falló, modo degradado)`);
     });
   });
 
