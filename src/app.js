@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth.routes');
 const deviceRoutes = require('./routes/devices');
 const profileRoutes = require('./routes/profile');
 const ingestRoutes = require('./routes/ingest');
+const readingsRoutes = require('./routes/readings');
 
 const app = express();
 
@@ -32,6 +33,9 @@ app.use('/api/devices', deviceRoutes);
 
 // Ruta de ingesta — el ESP32 envía lecturas aquí (Content-Type: application/json)
 app.use('/api/ingest', ingestRoutes);
+
+// Ruta pública de lecturas — consultar datos enviados por los dispositivos
+app.use('/api/readings', readingsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: "API Monitoreo funcionando 🔥" });

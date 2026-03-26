@@ -17,6 +17,8 @@ const pool = require('../config/db');
 // ============================================================
 exports.createReading = async (req, res) => {
   try {
+    console.log('📥 POST /api/ingest — Body recibido:', JSON.stringify(req.body));
+
     const { device_code, device_id, temperatura, humedad } = req.body;
 
     // Aceptar device_code o device_id como identificador
@@ -69,6 +71,8 @@ exports.createReading = async (req, res) => {
       `UPDATE devices SET status = 'conectado' WHERE id = $1`,
       [deviceId]
     );
+
+    console.log('✅ POST /api/ingest — Lectura guardada en DB:', JSON.stringify(reading.rows[0]));
 
     res.status(201).json({
       mensaje: 'Lectura registrada',
