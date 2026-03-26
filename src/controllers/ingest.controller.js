@@ -14,8 +14,14 @@ const pool = require('../config/db');
 // ============================================================
 exports.ingest = async (req, res) => {
   try {
+<<<<<<< HEAD
     const rawCode = req.params.deviceCode || req.body.device_code;
     const { temperatura, humedad, compresor, energia } = req.body;
+=======
+    console.log('📥 POST /api/ingest — Body recibido:', JSON.stringify(req.body));
+
+    const { device_code, device_id, temperatura, humedad } = req.body;
+>>>>>>> e20119b921fed2ffe1785037ff8bde95efd86bca
 
     if (!rawCode || typeof rawCode !== 'string' || !rawCode.trim()) {
       return res.status(400).json({ mensaje: 'device_code es requerido (en URL o body)' });
@@ -60,8 +66,17 @@ exports.ingest = async (req, res) => {
       [newStatus, deviceId]
     );
 
+<<<<<<< HEAD
     console.log(`📡 [HTTP] [${deviceCode}] Temperatura: ${temperatura}°C | Energía: ${energia || 'Normal'}`);
     res.status(201).json({ mensaje: 'Lectura registrada', reading: result.rows[0] });
+=======
+    console.log('✅ POST /api/ingest — Lectura guardada en DB:', JSON.stringify(reading.rows[0]));
+
+    res.status(201).json({
+      mensaje: 'Lectura registrada',
+      reading: reading.rows[0],
+    });
+>>>>>>> e20119b921fed2ffe1785037ff8bde95efd86bca
   } catch (error) {
     console.error('Error en ingesta HTTP:', error);
     res.status(500).json({ mensaje: 'Error al guardar lectura' });
