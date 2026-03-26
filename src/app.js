@@ -7,6 +7,7 @@ const deviceRoutes = require('./routes/devices');
 const profileRoutes = require('./routes/profile');
 const ingestRoutes = require('./routes/ingest');
 const readingsRoutes = require('./routes/readings');
+const alertsRoutes = require('./routes/alerts');
 
 const app = express();
 
@@ -36,6 +37,9 @@ app.use('/api/ingest', ingestRoutes);
 
 // Ruta pública de lecturas — consultar datos enviados por los dispositivos
 app.use('/api/readings', readingsRoutes);
+
+// Ruta pública de alertas — consultar alertas generadas automáticamente
+app.use('/api/alerts', alertsRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: "API Monitoreo funcionando 🔥" });

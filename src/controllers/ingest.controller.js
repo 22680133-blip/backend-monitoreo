@@ -65,6 +65,51 @@ exports.ingest = async (req, res) => {
 
     console.log("Insert ejecutado correctamente");
 
+    // --- Generación de alertas (no afecta el guardado de temperatura) ---
+    try {
+      const limitsResult = await pool.query(
+        'SELECT limite_min, limite_max FROM devices WHERE id = $1',
+        [deviceId]
+      );
+
+      if (limitsResult.rows.length > 0) {
+        const { limite_min, limite_max } = limitsResult.rows[0];
+        let tipo = null;
+        let mensaje = null;
+
+        if (limite_max !== null && temp > limite_max) {
+          tipo = 'ALTA';
+          mensaje = `Temperatura alta: ${temp}°C supera el límite de ${limite_max}°C`;
+        } else if (limite_min !== null && temp < limite_min) {
+          tipo = 'BAJA';
+          mensaje = `Temperatura baja: ${temp}°C por debajo del límite de ${limite_min}°C`;
+        }
+
+        if (tipo) {
+          // Evitar duplicar alertas: verificar si ya existe una alerta reciente del mismo tipo
+          const recentAlert = await pool.query(
+            `SELECT id FROM alert
+             WHERE device_id = $1 AND tipo = $2
+             AND fecha > NOW() - INTERVAL '10 minutes'
+             ORDER BY fecha DESC LIMIT 1`,
+            [deviceId, tipo]
+          );
+
+          if (recentAlert.rows.length === 0) {
+            await pool.query(
+              `INSERT INTO alert (device_id, tipo, mensaje, fecha, leida)
+               VALUES ($1, $2, $3, NOW(), false)`,
+              [deviceId, tipo, mensaje]
+            );
+            console.log("Alerta generada:", tipo);
+          }
+        }
+      }
+    } catch (alertError) {
+      console.error('⚠️ Error al generar alerta (no afecta lectura):', alertError.message);
+    }
+    // --- Fin generación de alertas ---
+
     res.status(201).json({ mensaje: 'Lectura registrada' });
   } catch (error) {
     console.error('Error en ingesta HTTP:', error);

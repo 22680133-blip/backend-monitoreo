@@ -70,6 +70,7 @@ async function initDB() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_id      ON devices(device_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_device_id ON temperatures(device_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_temperatures_fecha     ON temperatures(fecha DESC);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_alert_device_tipo_fecha ON alert(device_id, tipo, fecha DESC);`);
 
     // Agregar columnas que puedan faltar en tablas ya existentes
     const addColumnStatements = [
