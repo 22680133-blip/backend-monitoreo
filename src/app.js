@@ -8,6 +8,7 @@ const profileRoutes = require('./routes/profile');
 const ingestRoutes = require('./routes/ingest');
 const readingsRoutes = require('./routes/readings');
 const alertsRoutes = require('./routes/alerts');
+const assistantRoutes = require('./routes/assistant');
 
 const app = express();
 
@@ -40,6 +41,9 @@ app.use('/api/readings', readingsRoutes);
 
 // Ruta pública de alertas — consultar alertas generadas automáticamente
 app.use('/api/alerts', alertsRoutes);
+
+// Ruta del asistente IA — preguntas sobre temperatura, alertas y estado
+app.use('/api/assistant', assistantRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: "API Monitoreo funcionando 🔥" });
