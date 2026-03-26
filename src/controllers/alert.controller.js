@@ -4,7 +4,7 @@
  * Devuelve las alertas generadas automáticamente al recibir lecturas
  * fuera de los límites configurados en cada dispositivo.
  *
- * Tabla origen: alert (id, device_id, tipo, mensaje, fecha, leida)
+ * Tabla origen: alerts (id, device_id, tipo, mensaje, fecha, leida)
  */
 const pool = require('../config/db');
 
@@ -17,7 +17,7 @@ exports.getAlerts = async (req, res) => {
 
     const result = await pool.query(`
       SELECT a.*, d.device_code
-      FROM alert a
+      FROM alerts a
       JOIN devices d ON a.device_id = d.id
       ORDER BY a.fecha DESC
       LIMIT $1

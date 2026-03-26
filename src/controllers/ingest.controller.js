@@ -88,7 +88,7 @@ exports.ingest = async (req, res) => {
         if (tipo) {
           // Evitar duplicar alertas: verificar si ya existe una alerta reciente del mismo tipo
           const recentAlert = await pool.query(
-            `SELECT id FROM alert
+            `SELECT id FROM alerts
              WHERE device_id = $1 AND tipo = $2
              AND fecha > NOW() - INTERVAL '10 minutes'
              ORDER BY fecha DESC LIMIT 1`,
@@ -97,7 +97,7 @@ exports.ingest = async (req, res) => {
 
           if (recentAlert.rows.length === 0) {
             await pool.query(
-              `INSERT INTO alert (device_id, tipo, mensaje, fecha, leida)
+              `INSERT INTO alerts (device_id, tipo, mensaje, fecha, leida)
                VALUES ($1, $2, $3, NOW(), false)`,
               [deviceId, tipo, mensaje]
             );
