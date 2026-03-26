@@ -47,6 +47,8 @@ async function initDB() {
         device_id     INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
         temperatura   FLOAT NOT NULL,
         humedad       FLOAT,
+        compresor     BOOLEAN DEFAULT true,
+        energia       VARCHAR(50) DEFAULT 'Normal',
         created_at    TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -64,6 +66,8 @@ async function initDB() {
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS telefono VARCHAR DEFAULT NULL`,
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS ubicacion VARCHAR DEFAULT NULL`,
       `ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_id VARCHAR(255)`,
+      `ALTER TABLE readings ADD COLUMN IF NOT EXISTS compresor BOOLEAN DEFAULT true`,
+      `ALTER TABLE readings ADD COLUMN IF NOT EXISTS energia VARCHAR(50) DEFAULT 'Normal'`,
     ];
 
     for (const stmt of addColumnStatements) {
