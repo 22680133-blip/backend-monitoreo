@@ -16,9 +16,9 @@ const pool = require('../config/db');
 // ============================================================
 exports.ingest = async (req, res) => {
   try {
-    console.log('Datos recibidos:', { device_code: req.body.device_code, temperatura: req.body.temperatura, humedad: req.body.humedad });
+    console.log("Datos recibidos:", req.body);
 
-    const rawCode = req.params.deviceCode || req.body.device_code || req.body.device_id;
+    const rawCode = req.params.deviceCode || req.body.device_code;
     const { temperatura, humedad } = req.body;
 
     if (!rawCode || typeof rawCode !== 'string' || !rawCode.trim()) {
@@ -44,9 +44,9 @@ exports.ingest = async (req, res) => {
       }
     }
 
-    // Buscar dispositivo por device_code o device_id
+    // Validar que el device_code existe en la tabla devices
     const deviceResult = await pool.query(
-      'SELECT id FROM devices WHERE device_code = $1 OR device_id = $1 LIMIT 1',
+      'SELECT id FROM devices WHERE device_code = $1',
       [deviceCode]
     );
 
@@ -57,21 +57,15 @@ exports.ingest = async (req, res) => {
     const deviceId = deviceResult.rows[0].id;
 
     // Guardar la lectura en tabla temperatures
-    const result = await pool.query(
+    await pool.query(
       `INSERT INTO temperatures (device_id, temperatura, humedad, fecha)
-       VALUES ($1, $2, $3, NOW())
-       RETURNING *`,
+       VALUES ($1, $2, $3, NOW())`,
       [deviceId, temp, hum]
     );
 
-    // Actualizar estado del dispositivo a activo
-    await pool.query(
-      'UPDATE devices SET status = $1 WHERE id = $2',
-      ['activo', deviceId]
-    );
+    console.log("Insert ejecutado correctamente");
 
-    console.log(`Datos guardados correctamente — [${deviceCode}] Temperatura: ${temp}°C`);
-    res.status(201).json({ mensaje: 'Lectura registrada', reading: result.rows[0] });
+    res.status(201).json({ mensaje: 'Lectura registrada' });
   } catch (error) {
     console.error('Error en ingesta HTTP:', error);
     res.status(500).json({ mensaje: 'Error al guardar lectura' });
