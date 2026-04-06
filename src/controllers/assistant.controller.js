@@ -1,57 +1,71 @@
 /**
  * Controlador del asistente IA — endpoint POST /api/assistant
  *
- * Recibe una pregunta del usuario y la envía a OpenAI para generar
+ * Recibe una pregunta del usuario y la envía a Google Gemini para generar
  * una respuesta inteligente sobre monitoreo de temperatura.
  *
- * Requiere la variable de entorno OPENAI_API_KEY.
+ * Requiere la variable de entorno GEMINI_API_KEY.
  */
-const OpenAI = require('openai');
+
+const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent`;
+
+const SYSTEM_INSTRUCTION = 'Eres un asistente para monitoreo de temperatura de refrigeradores. Responde claro y breve.';
 
 // ============================================================
 // POST /api/assistant — Pregunta al asistente IA
 // ============================================================
 exports.ask = async (req, res) => {
   try {
-    const { pregunta } = req.body;
+    const pregunta = req.body?.pregunta;
 
     if (!pregunta) {
-      return res.status(400).json({ mensaje: 'La pregunta es requerida' });
+      return res.status(400).json({ mensaje: 'Debes enviar { pregunta: \'...\' }' });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('Falta OPENAI_API_KEY');
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('Falta GEMINI_API_KEY');
     }
 
     console.log('📥 Pregunta recibida:', pregunta);
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: SYSTEM_INSTRUCTION }],
+        },
+        contents: [
+          {
+            parts: [{ text: pregunta }],
+          },
+        ],
+      }),
     });
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'Eres un asistente para monitoreo de temperatura de refrigeradores. Responde claro y breve.',
-        },
-        {
-          role: 'user',
-          content: pregunta,
-        },
-      ],
-    });
+    const data = await response.json();
 
-    const respuesta = completion.choices?.[0]?.message?.content;
+    if (!response.ok) {
+      console.error('❌ Gemini API error:', data);
+      return res.status(502).json({
+        mensaje: 'Error en la API de Gemini',
+        detalle: data.error?.message || 'Respuesta no exitosa de Gemini',
+      });
+    }
 
-    if (!respuesta) {
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!texto) {
       return res.status(502).json({ mensaje: 'No se obtuvo respuesta del modelo de IA' });
     }
 
-    res.json({ respuesta });
+    res.json({ respuesta: texto });
   } catch (error) {
-    console.error('❌ Error en assistant:', error.response?.data || error.message || error);
+    console.error('❌ Error en Gemini:', error.message || error);
 
     res.status(500).json({
       mensaje: 'Error al procesar la consulta del asistente',
