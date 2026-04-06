@@ -12,6 +12,10 @@ const assistantRoutes = require('./routes/assistant');
 
 const app = express();
 
+// Confiar en el primer proxy (Railway, Render, etc.) para que express-rate-limit
+// use correctamente el header X-Forwarded-For al identificar clientes
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
