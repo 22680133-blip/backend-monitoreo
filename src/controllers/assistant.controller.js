@@ -7,6 +7,11 @@
  * Requiere la variable de entorno GEMINI_API_KEY.
  */
 
+const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent`;
+
+const SYSTEM_INSTRUCTION = 'Eres un asistente para monitoreo de temperatura de refrigeradores. Responde claro y breve.';
+
 // ============================================================
 // POST /api/assistant — Pregunta al asistente IA
 // ============================================================
@@ -24,22 +29,23 @@ exports.ask = async (req, res) => {
 
     console.log('📥 Pregunta recibida:', pregunta);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: SYSTEM_INSTRUCTION }],
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: pregunta }],
-            },
-          ],
-        }),
-      }
-    );
+        contents: [
+          {
+            parts: [{ text: pregunta }],
+          },
+        ],
+      }),
+    });
 
     const data = await response.json();
 
@@ -51,7 +57,11 @@ exports.ask = async (req, res) => {
       });
     }
 
-    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!texto) {
+      return res.status(502).json({ mensaje: 'No se obtuvo respuesta del modelo de IA' });
+    }
 
     res.json({ respuesta: texto });
   } catch (error) {
