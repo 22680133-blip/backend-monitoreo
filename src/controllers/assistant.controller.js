@@ -43,9 +43,13 @@ exports.ask = async (req, res) => {
       ],
     });
 
-    res.json({
-      respuesta: completion.choices[0].message.content,
-    });
+    const respuesta = completion.choices?.[0]?.message?.content;
+
+    if (!respuesta) {
+      return res.status(502).json({ mensaje: 'No se obtuvo respuesta del modelo de IA' });
+    }
+
+    res.json({ respuesta });
   } catch (error) {
     console.error('❌ Error en assistant:', error.response?.data || error.message || error);
 
