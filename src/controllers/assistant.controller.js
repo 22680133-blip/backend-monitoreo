@@ -159,11 +159,11 @@ function formatFecha(fecha) {
   const diff = Date.now() - new Date(fecha).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'hace unos segundos';
-  if (mins < 60) return `hace ${mins} minuto(s)`;
+  if (mins < 60) return `hace ${mins} ${mins === 1 ? 'minuto' : 'minutos'}`;
   const horas = Math.floor(mins / 60);
-  if (horas < 24) return `hace ${horas} hora(s)`;
+  if (horas < 24) return `hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
   const dias = Math.floor(horas / 24);
-  return `hace ${dias} día(s)`;
+  return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
 
 function normalize(text) {
