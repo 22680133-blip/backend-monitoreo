@@ -47,6 +47,7 @@ const BASE_DELAY_MS = 2000;
 
 async function callGemini(body) {
   let lastError;
+  let lastHttpStatus = 502;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const response = await fetch(GEMINI_API_URL, {
@@ -65,6 +66,7 @@ async function callGemini(body) {
     }
 
     lastError = data;
+    lastHttpStatus = response.status;
 
     // Solo reintentar en 429 (rate-limit transitorio)
     if (response.status === 429 && attempt < MAX_RETRIES) {
@@ -80,7 +82,7 @@ async function callGemini(body) {
 
   // Lanzar con metadata para que el handler distinga 429 de otros errores
   const err = new Error(lastError?.error?.message || 'Error en la API de Gemini');
-  err.status = lastError?.error?.code || 502;
+  err.status = lastHttpStatus;
   err.errorData = lastError;
   throw err;
 }
@@ -135,7 +137,7 @@ exports.ask = async (req, res) => {
     // Manejo específico de cuota agotada (429 / RESOURCE_EXHAUSTED)
     if (error.status === 429) {
       return res.status(429).json({
-        mensaje: 'Se agotó la cuota de la API de Gemini. Intenta de nuevo más tarde o revisa el plan de facturación en https://ai.google.dev/gemini-api/docs/rate-limits',
+        mensaje: 'El servicio de asistente está temporalmente no disponible debido a límites de uso. Por favor, intenta de nuevo más tarde.',
         detalle: error.message,
       });
     }
