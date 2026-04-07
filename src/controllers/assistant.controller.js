@@ -7,7 +7,7 @@
  * Requiere la variable de entorno GEMINI_API_KEY.
  */
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const SYSTEM_INSTRUCTION = 'Eres un asistente para monitoreo de temperatura de refrigeradores. Responde claro y breve.';
