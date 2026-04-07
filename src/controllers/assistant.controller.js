@@ -24,25 +24,8 @@ const rules = [
       if (devices.length === 0) return 'No tienes dispositivos registrados.';
 
       const deviceIds = devices.map((d) => d.id);
-      const { rows: temps } = await pool.query(
-        `SELECT DISTINCT ON (t.device_id) t.temperatura, t.fecha, d.nombre, d.id AS device_id
-         FROM temperatures t
-         JOIN devices d ON d.id = t.device_id
-         WHERE t.device_id = ANY($1)
-         ORDER BY t.device_id, t.fecha DESC`,
-        [deviceIds]
-      );
-
-      const fallas = [];
-      for (const device of devices) {
-        const lectura = temps.find((t) => t.device_id === device.id);
-        if (!lectura) continue;
-        if (lectura.temperatura > device.limite_max) {
-          fallas.push(`⚠️ ${device.nombre}: temperatura ALTA (${lectura.temperatura}°C, límite máx: ${device.limite_max}°C)`);
-        } else if (lectura.temperatura < device.limite_min) {
-          fallas.push(`⚠️ ${device.nombre}: temperatura BAJA (${lectura.temperatura}°C, límite mín: ${device.limite_min}°C)`);
-        }
-      }
+      const temps = await getLatestTemperatures(deviceIds);
+      const fallas = detectFaults(temps);
 
       if (fallas.length === 0) {
         return '✅ No se detectaron fallas. Todos tus dispositivos están dentro de los parámetros normales.';
@@ -59,15 +42,7 @@ const rules = [
       if (devices.length === 0) return 'No tienes dispositivos registrados.';
 
       const deviceIds = devices.map((d) => d.id);
-      const { rows } = await pool.query(
-        `SELECT DISTINCT ON (t.device_id) t.temperatura, t.fecha, d.nombre, d.device_code,
-                d.limite_min, d.limite_max
-         FROM temperatures t
-         JOIN devices d ON d.id = t.device_id
-         WHERE t.device_id = ANY($1)
-         ORDER BY t.device_id, t.fecha DESC`,
-        [deviceIds]
-      );
+      const rows = await getLatestTemperatures(deviceIds);
       if (rows.length === 0) {
         return 'No hay lecturas de temperatura registradas aún en tus dispositivos.';
       }
@@ -184,22 +159,8 @@ const rules = [
       // Detección de fallas
       let estadoGeneral = '✅ Todos tus dispositivos están dentro de los parámetros normales.';
       if (deviceIds.length > 0) {
-        const { rows: temps } = await pool.query(
-          `SELECT DISTINCT ON (t.device_id) t.temperatura, d.nombre, d.limite_min, d.limite_max
-           FROM temperatures t
-           JOIN devices d ON d.id = t.device_id
-           WHERE t.device_id = ANY($1)
-           ORDER BY t.device_id, t.fecha DESC`,
-          [deviceIds]
-        );
-        const fallas = [];
-        for (const t of temps) {
-          if (t.temperatura > t.limite_max) {
-            fallas.push(`⚠️ ${t.nombre}: ${t.temperatura}°C (máx: ${t.limite_max}°C)`);
-          } else if (t.temperatura < t.limite_min) {
-            fallas.push(`⚠️ ${t.nombre}: ${t.temperatura}°C (mín: ${t.limite_min}°C)`);
-          }
-        }
+        const temps = await getLatestTemperatures(deviceIds);
+        const fallas = detectFaults(temps);
         if (fallas.length > 0) {
           estadoGeneral = `⚠️ Se detectaron fallas:\n${fallas.join('\n')}`;
         }
@@ -270,11 +231,44 @@ const rules = [
  * Se usa en múltiples handlers para garantizar que NUNCA se mezclen datos.
  */
 async function getUserDevices(userId) {
+  if (!userId) throw new Error('userId es requerido');
   const { rows } = await pool.query(
     'SELECT id, nombre, ubicacion, limite_min, limite_max, device_code, status FROM devices WHERE user_id = $1 ORDER BY created_at DESC',
     [userId]
   );
   return rows;
+}
+
+/**
+ * Obtiene la última lectura de temperatura por dispositivo para un conjunto de device IDs.
+ */
+async function getLatestTemperatures(deviceIds) {
+  if (deviceIds.length === 0) return [];
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (t.device_id) t.temperatura, t.fecha, d.nombre, d.device_code,
+            d.id AS device_id, d.limite_min, d.limite_max
+     FROM temperatures t
+     JOIN devices d ON d.id = t.device_id
+     WHERE t.device_id = ANY($1)
+     ORDER BY t.device_id, t.fecha DESC`,
+    [deviceIds]
+  );
+  return rows;
+}
+
+/**
+ * Detecta fallas (temperaturas fuera de rango) a partir de las últimas lecturas por dispositivo.
+ */
+function detectFaults(temps) {
+  const fallas = [];
+  for (const t of temps) {
+    if (t.temperatura > t.limite_max) {
+      fallas.push(`⚠️ ${t.nombre}: temperatura ALTA (${t.temperatura}°C, límite máx: ${t.limite_max}°C)`);
+    } else if (t.temperatura < t.limite_min) {
+      fallas.push(`⚠️ ${t.nombre}: temperatura BAJA (${t.temperatura}°C, límite mín: ${t.limite_min}°C)`);
+    }
+  }
+  return fallas;
 }
 
 /**

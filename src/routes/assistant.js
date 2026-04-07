@@ -14,6 +14,6 @@ const assistantLimiter = rateLimit({
 });
 
 // POST /api/assistant — requiere autenticación JWT
-router.post('/', auth, assistantLimiter, assistantController.ask);
+router.post('/', assistantLimiter, auth, assistantController.ask);
 
 module.exports = router;
