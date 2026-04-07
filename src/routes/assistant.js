@@ -3,10 +3,10 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const assistantController = require('../controllers/assistant.controller');
 
-// Limitar a 20 peticiones por minuto por IP (más restrictivo que otros endpoints)
+// Limitar a 30 peticiones por minuto por IP (sin costo — lógica local)
 const assistantLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { mensaje: 'Demasiadas peticiones al asistente, intenta más tarde' },
