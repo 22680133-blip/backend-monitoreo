@@ -154,6 +154,21 @@ const rules = [
 
 // ── Utilidades ───────────────────────────────────────────────
 
+/**
+ * Ejecuta un handler con un timeout de seguridad.
+ * Si la consulta a la BD tarda más de `ms` milisegundos, devuelve un mensaje
+ * de error en vez de dejar la petición colgada para siempre.
+ */
+function withTimeout(fn, ms = 15000) {
+  return (...args) => {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Tiempo de espera agotado consultando la base de datos')), ms);
+    });
+    return Promise.race([fn(...args), timeout]).finally(() => clearTimeout(timer));
+  };
+}
+
 function formatFecha(fecha) {
   if (!fecha) return '';
   const diff = Date.now() - new Date(fecha).getTime();
@@ -193,19 +208,22 @@ exports.ask = async (req, res) => {
     // Buscar la primera regla que coincida
     for (const rule of rules) {
       if (rule.test(normalizada)) {
-        const respuesta = await rule.handler(normalizada);
+        console.log('🔍 Regla coincidente encontrada, ejecutando handler…');
+        const respuesta = await withTimeout(rule.handler)(normalizada);
+        console.log('✅ Respuesta generada, enviando al cliente');
         return res.json({ respuesta });
       }
     }
 
     // Respuesta por defecto
+    console.log('ℹ️ Ninguna regla coincidió, enviando respuesta por defecto');
     return res.json({
       respuesta:
         'No entendí tu pregunta. Puedes preguntarme sobre temperatura, humedad, alertas, dispositivos o el estado del sistema. Escribe "ayuda" para ver todas las opciones.',
     });
   } catch (error) {
     console.error('❌ Error en asistente:', error.message || error);
-    res.status(500).json({
+    return res.status(500).json({
       respuesta: 'Ocurrió un error al procesar tu pregunta. Intenta de nuevo.',
     });
   }
