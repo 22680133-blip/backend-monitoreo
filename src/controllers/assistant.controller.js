@@ -160,13 +160,13 @@ const rules = [
  * de error en vez de dejar la petición colgada para siempre.
  */
 function withTimeout(fn, ms = 15000) {
-  return (...args) =>
-    Promise.race([
-      fn(...args),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tiempo de espera agotado consultando la base de datos')), ms)
-      ),
-    ]);
+  return (...args) => {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Tiempo de espera agotado consultando la base de datos')), ms);
+    });
+    return Promise.race([fn(...args), timeout]).finally(() => clearTimeout(timer));
+  };
 }
 
 function formatFecha(fecha) {
